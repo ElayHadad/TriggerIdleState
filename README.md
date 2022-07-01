@@ -10,4 +10,4 @@ The interface is mostly intuitive.
   3. Reopen the application
   4. Press start and it will trigger the IDLE state whenever your PC hits the set RAM usage percentage
 
-Please note that right now the application is in alpha state! It was written mostly to serve others who want to use the code and apply the idea in a better way.
+Please note that right now the application is in beta state! It was written mostly to serve others who want to use the code and apply the idea in a better way.
