@@ -4,6 +4,10 @@ consuming RAM, thus IDLE state won't be triggered.
 Hence, I wrote an application to activate PC's IDLE state on a custom trigger.
 
 ## How is this working ##
+Basically the idea is to check whether mouse movement isn't detected for custom amount of time and if the ram usage is at a certain point, if so trigger IDLE state.
+However you can take this code/concept/sketch and suite it to yourself.
+
+## How to use ##
 The interface is mostly intuitive.
   1. Write the RAM usage percentage you want to trigger IDLE state
   2. Click on 'set'
