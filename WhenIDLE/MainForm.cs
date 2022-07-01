@@ -16,6 +16,7 @@ namespace WhenIDLE
     public partial class MainForm : Form
     {
         private static Int64 trigger;
+        private static int inactive;
 
         public MainForm()
         {
@@ -23,7 +24,11 @@ namespace WhenIDLE
 
             #region auto start chkbx
             if (Registry.CurrentUser.OpenSubKey(StartupKey, true).GetValueNames().Contains(StartupValue))
+            {
+                this.Hide();
+                this.WindowState = FormWindowState.Minimized;
                 chkbx_autoStart.Checked = true;
+            }
             else
                 chkbx_autoStart.Checked = false;
             #endregion
@@ -31,30 +36,45 @@ namespace WhenIDLE
             #region set IDLE trigger value
             try
             {
-                using (StreamReader sr = File.OpenText("settings"))
-                {
-                    string s = "";
-                    while ((s = sr.ReadLine()) != null)
-                    {
-                        trigger = Convert.ToInt64(s);
-                    }
-                }
+                trigger = Convert.ToInt64(File.ReadLines("settings").First()); // gets the first line from file.
+                tb_trigger.Text = trigger.ToString();
+            }
+            catch (Exception ex) { }
+            #endregion
+            #region set inactive value
+            try
+            {
+                inactive = Convert.ToInt32(File.ReadLines("settings").ElementAtOrDefault(1)); // gets the first line from file.
+                tb_inactiveTime.Text = inactive.ToString();
             }
             catch (Exception ex) { }
             #endregion
         }
 
+        private int mouseIdleTime;
+        private int x = MouseMovements.GetMyCusorPosX();
+        private int y = MouseMovements.GetMyCusorPosY();
         private void timer_checkIDLE_Tick(object sender, EventArgs e)
         {
+            if (x == MouseMovements.GetMyCusorPosX() && y == MouseMovements.GetMyCusorPosY())
+            {
+                mouseIdleTime++;
+            }
+            else
+            {
+                x = MouseMovements.GetMyCusorPosX();
+                y = MouseMovements.GetMyCusorPosY();
+            }
+
             decimal percentOccupied = 100 - ((decimal)PerformanceInfo.GetPhysicalAvailableMemoryInMiB() / (decimal)PerformanceInfo.GetTotalMemoryInMiB() * 100);
-            if (trigger <= percentOccupied)
+            if (trigger <= percentOccupied && Convert.ToInt32(tb_inactiveTime.Text) <= (mouseIdleTime/60))
             {
                 #region start idle
                 System.Diagnostics.Process process = new System.Diagnostics.Process();
                 System.Diagnostics.ProcessStartInfo startInfo = new System.Diagnostics.ProcessStartInfo();
                 startInfo.WindowStyle = System.Diagnostics.ProcessWindowStyle.Hidden;
                 startInfo.FileName = "cmd.exe";
-                startInfo.Arguments = "Rundll32.exe advapi32.dll,ProcessIdleTasks";
+                startInfo.Arguments = "/C Rundll32.exe advapi32.dll,ProcessIdleTasks";
                 process.StartInfo = startInfo;
                 process.Start();
                 #endregion
@@ -87,23 +107,18 @@ namespace WhenIDLE
                 key.SetValue(StartupValue, Application.ExecutablePath.ToString());
             }
             else
-            {
-                RegistryKey hklm = Microsoft.Win32.Registry.CurrentUser;
-                RegistryKey subkey = hklm.OpenSubKey(StartupKey, true);
-                subkey.DeleteValue(StartupValue);
-            }
+                Registry.CurrentUser.OpenSubKey(StartupKey, true).DeleteValue(StartupValue);
         }
         #endregion
 
         private void closeToolStripMenuItem_Click(object sender, EventArgs e)
         {
-            Application.Exit();
+            this.Dispose();
         }
 
         private void timer_restartCheck_Tick(object sender, EventArgs e)
         {
-            decimal percentOccupied = 100 - ((decimal)PerformanceInfo.GetPhysicalAvailableMemoryInMiB() / (decimal)PerformanceInfo.GetTotalMemoryInMiB() * 100);
-            if (percentOccupied > trigger)
+            if (x != MouseMovements.GetMyCusorPosX() && y != MouseMovements.GetMyCusorPosY())
             {
                 timer_checkIDLE.Start();
                 timer_restartCheck.Stop();
@@ -125,20 +140,26 @@ namespace WhenIDLE
 
         private void btn_setTrigger_Click(object sender, EventArgs e)
         {
-            // Check if file already exists. If yes, delete it.     
-            if (File.Exists("settings"))
+            if (!String.IsNullOrEmpty(tb_trigger.Text) && !String.IsNullOrEmpty(tb_inactiveTime.Text))
             {
-                File.Delete("settings");
-            }
+                // Check if file already exists. If yes, delete it.     
+                if (File.Exists("settings"))
+                {
+                    File.Delete("settings");
+                }
 
-            // Create a new file     
-            using (FileStream fs = File.Create("settings"))
-            {
-                // Add some text to file    
-                byte[] txt = new UTF8Encoding(true).GetBytes(tb_trigger.Text);
-                fs.Write(txt, 0, txt.Length);
+                // Create a new file     
+                using (FileStream fs = File.Create("settings"))
+                {
+                    // Add some text to file    
+                    byte[] txt = new UTF8Encoding(true).GetBytes(tb_trigger.Text + "\n" + tb_inactiveTime.Text);
+                    fs.Write(txt, 0, txt.Length);
+                }
+
+                MessageBox.Show("restart the app to apply new settings");
             }
-            MessageBox.Show("restart the app to apply new settings");
+            else
+                MessageBox.Show("one of the properties isn't set.");
         }
     }
 
